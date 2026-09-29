@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: microblog
+      POSTGRES_PASSWORD: microblog
+      POSTGRES_DB: microblog
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  app:
+    build: .
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://microblog:microblog@db:5432/microblog
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./media:/app/media
+
+volumes:
+  pgdata:

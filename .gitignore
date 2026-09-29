@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+
+# Виртуальное окружение
+venv/
+.venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# База данных
+*.db
+*.sqlite
+test.db
+
+# Переменные окружения (конфиденциально!)
+.env
+
+# Загруженные файлы
+media/
+uploads/
+
+# ОС
+.DS_Store
+Thumbs.db
+
+# Тесты
+.pytest_cache/
+.coverage
+htmlcov/
