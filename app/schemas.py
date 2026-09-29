@@ -11,6 +11,12 @@ class UserLists(UserBase):
     following: List[UserBase]
 
 
+class UsersListResponse(BaseModel):
+    result: bool
+    users: List[UserBase]
+
+
+
 class TweetAuth(BaseModel):
     id: int
     name: str

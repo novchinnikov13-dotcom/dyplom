@@ -7,7 +7,7 @@ from app.schemas import (
     UserLists,
     UserProfileResponse,
     GenericResponse,
-    UserBase,
+    UserBase, UsersListResponse,
 )
 
 
@@ -48,40 +48,14 @@ def get_default_user(db: Session = Depends(get_db)) -> User:
 
 
 
-# def reg_endpoints(app: FastAPI) -> None:
-#     @app.post("/login")
-#     async def login(request: Request, response: Response, db: Session = Depends(get_db), ):
-#         data = await request.json()
-#         username = data.get("username")
-#         if not username:
-#             raise HTTPException(
-#                 status_code=400,
-#                 detail={"result": False, "error_message": "username required"},
-#             )
-#
-#         user = db.query(User).filter(User.name == username).first()
-#         if user is None:
-#             raise HTTPException(
-#                 status_code=401,
-#                 detail={
-#                     "result": False,
-#                     "error_type": "unauthorized",
-#                     "error_message": "User not found",
-#                 },
-#             )
-#
-#         # ставим cookie
-#         response.set_cookie(
-#             key="api_key",
-#             value=username,
-#             httponly=False,  # для отладки можно False, чтобы JS видел cookie
-#             secure=False,  # True только если HTTPS
-#             samesite="lax",
-#             max_age=60 * 60 * 24 * 7,  # 7 дней
-#         )
-#         return {"result": True, "user": {"id": user.id, "name": user.name}}
-
 def reg_endpoints(app: FastAPI) -> None:
+    @app.get("/api/users", response_model=UsersListResponse)
+    def get_all_users(db: Session = Depends(get_db)):
+        users = db.query(User).all()
+        users_list = [UserBase(id=u.id, name=u.name) for u in users]
+        return UsersListResponse(result=True, users=users_list)
+
+
     @app.get("/api/users/me", response_model=UserProfileResponse)
     def get_me_profile(current_user: User = Depends(get_default_user),
                        db: Session = Depends(get_db),) -> UserProfileResponse:
