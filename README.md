@@ -1,31 +1,90 @@
-## Структура проекта
+1. Клонирование репозитория
 
-diplom_advance_new/
-|- app/
-|  |- api/ (users.py, tweets.py, medias.py)
-|  |- tests/ (conftest.py, test_*.py)
-  |- config.py, database.py, models.py, schemas.py, main.py
-|- static/, templates/, media/
-|- .env.example, requirements.txt, pytest.ini, README.md
+```bash
+git clone [https://github.com/novchinnikov13-dotcom/dyplom.git](https://github.com/novchinnikov13-dotcom/dyplom.git)
+cd diplom_advance
+```
 
-## Быстрый старт
+2. Создание виртуального окружения
 
-1. pip install -r requirements.txt
-2. cp .env.example .env
-3. uvicorn app.main:app --reload
-4. pytest -v app/tests/
 
-## API Endpoints
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
-GET /api/users — список пользователей
-GET /api/users/me?current_user_id=1 — профиль текущего
-POST /api/users/{id}/follow?current_user_id=1 — подписаться
-DELETE /api/users/{id}/follow?current_user_id=1 — отписаться
+3. Установка зависимостей
 
-POST /api/tweets?current_user_id=1 — создать твит
-GET /api/tweets?current_user_id=1 — лента
-DELETE /api/tweets/{id}?current_user_id=1 — удалить твит
-POST /api/tweets/{id}/likes?current_user_id=1 — лайк
-DELETE /api/tweets/{id}/likes?current_user_id=1 — убрать лайк
+```bash
+pip install -r requirements.txt
+```
 
-POST /api/medias?current_user_id=1 — загрузить изображение
+4. Настройка PostgreSQL
+
+
+
+1. Убедитесь, что служба PostgreSQL запущена:
+
+Должно показать `Running`.
+
+2. Создайте базу данных и пользователя:
+
+Откройте **SQL Shell (psql)** и выполните:
+
+```sql
+CREATE DATABASE microblog;
+CREATE USER microblog WITH PASSWORD 'microblog';
+GRANT ALL PRIVILEGES ON DATABASE microblog TO microblog;
+```
+
+
+
+5. Настройка окружения
+
+Скопируйте пример файла настроек:
+
+```bash
+cp .env.example .env
+```
+
+Отредактируйте `.env` при необходимости:
+
+```env
+DATABASE_URL=postgresql://microblog:microblog@localhost:5432/microblog
+MEDIA_ROOT=media
+```
+
+
+
+6. Запуск сервера
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Сервер запустится на `http://127.0.0.1:8000`
+
+- **Swagger UI (документация API):** http://127.0.0.1:8000/docs
+- **Главная страница:** http://127.0.0.1:8000/
+
+7. Запуск тестов
+
+```bash
+pytest -v app/tests/
+```
+
+
+##  Зависимости
+
+- **FastAPI 0.115.0** — веб-фреймворк
+- **SQLAlchemy 2.0.35** — ORM
+- **Psycopg2** — драйвер PostgreSQL
+- **Pydantic 2.9.2** — валидация данных
+- **pytest 9.1.1** — тестирование
+- **uvicorn 0.30.6** — ASGI-сервер
+
+Полный список в `requirements.txt`
+
+
+
+
