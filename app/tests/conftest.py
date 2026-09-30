@@ -1,72 +1,70 @@
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+from fastapi.testclient import TestClient
 
 from app.database import Base, get_db
-from app.main import app
-from app.models import User, Tweet, Likes
-
-# Тестовая БД — SQLite
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+import app.models
+from app.models import User, Tweet
+from app.main import create_app
 
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
+    "sqlite:///:memory:",
     connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
 
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+TestingSessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+)
 
 
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-# Переопределяем зависимость get_db в приложении
-app.dependency_overrides[get_db] = override_get_db
-
-
-@pytest.fixture(autouse=True)
-def create_tables_and_seed():
+@pytest.fixture(scope="function")
+def db_session():
     Base.metadata.create_all(bind=engine)
+    session = TestingSessionLocal()
 
-    db = TestingSessionLocal()
-    try:
-        alice = User(name="alice")
-        bob = User(name="bob")
-        carol = User(name="carol")
-        db.add_all([alice, bob, carol])
-        db.flush()
+    alice = User(name="alice")
+    bob = User(name="bob")
+    carol = User(name="carol")
 
-        alice.following.append(bob)
-        alice.following.append(carol)
+    # Алиса подписывается на Боба и Кэрол
+    alice.following.append(bob)
+    alice.following.append(carol)
 
-        t1 = Tweet(author_id=alice.id, content="Hello from Alice!")
-        t2 = Tweet(author_id=bob.id, content="Bob here.")
-        t3 = Tweet(author_id=carol.id, content="Carol tweeting.")
-        db.add_all([t1, t2, t3])
-        db.flush()
+    tweets = [
+        Tweet(content="Alice hi", author=alice),
+        Tweet(content="Here Bob", author=bob),
+        Tweet(content="Hello world", author=carol),
+    ]
 
-        like = Likes(user_id=bob.id, tweet_id=t1.id)
-        db.add(like)
+    session.add_all([alice, bob, carol])
+    session.add_all(tweets)
+    session.commit()
 
-        db.commit()
+    yield session
 
-        all_users = db.query(User).all()
-        print("Users in test DB:", [u.name for u in all_users])
-    finally:
-        db.close()
-
-    yield
-
+    session.close()
     Base.metadata.drop_all(bind=engine)
 
 
-@pytest.fixture
-def client() -> TestClient:
-    with TestClient(app) as c:
-        yield c
+@pytest.fixture(scope="function")
+def client(db_session):
+    def override_get_db():
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    _app = create_app()
+    _app.dependency_overrides[get_db] = override_get_db
+
+    with TestClient(_app) as test_client:
+        yield test_client
+
+    _app.dependency_overrides.clear()
+

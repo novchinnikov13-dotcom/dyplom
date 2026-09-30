@@ -39,7 +39,7 @@ def test_unfollow(client: TestClient):
 
 
 def test_get_prof(client: TestClient):
-    response = client.get("/api/users/2")
+    response = client.get("/api/users/2", headers={"api-key": "alice"})
     assert response.status_code == 200
     data = response.json()
     assert data["result"] is True

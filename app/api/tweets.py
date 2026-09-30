@@ -16,25 +16,25 @@ from app.schemas import (
 )
 
 
-# def get_user_by_api(db: Session, api_key: str) -> User:
-#     user = db.query(User).filter(User.name == api_key).first()
-#     if user is None:
-#         raise HTTPException(
-#             status_code=401,
-#             detail={
-#                 "result": False,
-#                 "error_type": "unauthorized",
-#                 "error_message": "Invalid api-key",
-#             },
-#         )
-#     return user
-
-def get_default_user(db: Session = Depends(get_db)) -> User:
-
-    user = db.query(User).first()
+def get_user_by_api(db: Session, api_key: str) -> User:
+    user = db.query(User).filter(User.name == api_key).first()
     if user is None:
-        raise HTTPException(500, detail="No users in DB")
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "result": False,
+                "error_type": "unauthorized",
+                "error_message": "Invalid api-key",
+            },
+        )
     return user
+
+# def get_default_user(db: Session = Depends(get_db)) -> User:
+#
+#     user = db.query(User).first()
+#     if user is None:
+#         raise HTTPException(500, detail="No users in DB")
+#     return user
 
 
 
@@ -42,9 +42,10 @@ def register_endpoints(app: FastAPI) -> None:
     @app.post("/api/tweets", response_model=TweetCreateResponse)
     def create_tweet(
             body: TweetCreate,
-            current_user: User = Depends(get_default_user),
+            api_key: str = Header(..., alias="api-key"),
             db: Session = Depends(get_db),
     ) -> TweetCreateResponse:
+        current_user = get_user_by_api(db, api_key)
 
         tweet = Tweet(author_id=current_user.id, content=body.tweet_data)
         db.add(tweet)
@@ -67,9 +68,11 @@ def register_endpoints(app: FastAPI) -> None:
 
     @app.get("/api/tweets", response_model=TweetsListResponse)
     def get_data(
-            current_user: User = Depends(get_default_user),
-                       db: Session = Depends(get_db),
+            api_key: str = Header(..., alias="api-key"),
+            db: Session = Depends(get_db),
     ) -> TweetsListResponse:
+        current_user = get_user_by_api(db, api_key)
+
         following_id = [u.id for u in current_user.following]
         tweets = db.query(Tweet).filter(Tweet.author_id.in_(following_id)).all()
         if tweets is None:
@@ -91,9 +94,10 @@ def register_endpoints(app: FastAPI) -> None:
     @app.delete("/api/tweets/{tweet_id}", response_model=GenericResponse)
     def delete_tweet(
         tweet_id: int,
-            current_user: User = Depends(get_default_user),
+            api_key: str = Header(..., alias="api-key"),
             db: Session = Depends(get_db),
     ) -> GenericResponse:
+        current_user = get_user_by_api(db, api_key)
 
         tweet = db.query(Tweet).filter(Tweet.id == tweet_id).first()
         if tweet is None:
@@ -123,9 +127,10 @@ def register_endpoints(app: FastAPI) -> None:
     @app.post("/api/tweets/{tweet_id}/likes", response_model=GenericResponse)
     def tweet_like(
         tweet_id: int,
-            current_user: User = Depends(get_default_user),
+            api_key: str = Header(..., alias="api-key"),
             db: Session = Depends(get_db),
     ) -> GenericResponse:
+        current_user = get_user_by_api(db, api_key)
 
         tweet = db.query(Tweet).filter(Tweet.id == tweet_id).first()
         if tweet is None:
@@ -155,9 +160,10 @@ def register_endpoints(app: FastAPI) -> None:
     @app.delete("/api/tweets/{tweet_id}/likes", response_model=GenericResponse)
     def del_like(
         tweet_id: int,
-            current_user: User = Depends(get_default_user),
+            api_key: str = Header(..., alias="api-key"),
             db: Session = Depends(get_db),
     ) -> GenericResponse:
+        current_user = get_user_by_api(db, api_key)
 
         tweet = db.query(Tweet).filter(Tweet.id == tweet_id).first()
         if tweet is None:

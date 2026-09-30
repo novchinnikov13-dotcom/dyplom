@@ -2,9 +2,8 @@ from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, DateTime, ForeignKey, Table, Boolean,
 )
-from sqlalchemy.orm import relationship, declarative_base
-
-Base = declarative_base()
+from sqlalchemy.orm import relationship
+from app.database import Base
 
 follows = Table('follows', Base.metadata,
 Column('follower_id', Integer, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True),

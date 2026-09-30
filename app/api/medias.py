@@ -9,39 +9,39 @@ from app.models import User, Media
 from app.schemas import MediaUploadResponse
 from app.config import MEDIA_ROOT
 
-# def get_user_by_api_key(db: Session, api_key: str) -> User:
-#     """
-#     Вспомогательная функция: ищет пользователя по заголовку api-key.
-#     """
-#     user = db.query(User).filter(User.name == api_key).first()
-#     if user is None:
-#         raise HTTPException(
-#             status_code=401,
-#             detail={
-#                 "result": False,
-#                 "error_type": "unauthorized",
-#                 "error_message": "Invalid api-key",
-#             },
-#         )
-#     return user
 
-
-def get_default_user(db: Session = Depends(get_db)) -> User:
-    user = db.query(User).first()
+def get_user_by_api_key(db: Session, api_key: str) -> User:
+    user = db.query(User).filter(User.name == api_key).first()
     if user is None:
-        raise HTTPException(500, detail="No users in DB")
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "result": False,
+                "error_type": "unauthorized",
+                "error_message": "Invalid api-key",
+            },
+        )
     return user
+
+
+# def get_default_user(db: Session = Depends(get_db)) -> User:
+#     user = db.query(User).first()
+#     if user is None:
+#         raise HTTPException(500, detail="No users in DB")
+#     return user
 
 def reg_endpoints(app: FastAPI) -> None:
     @app.post("/api/medias", response_model=MediaUploadResponse)
-    def upload_media(current_user: User = Depends(get_default_user), file: UploadFile = File(...), db: Session = Depends(get_db)
+    def upload_media(file: UploadFile = File(...),
+        api_key: str = Header(..., alias="api-key"),
+        db: Session = Depends(get_db),
     ) -> MediaUploadResponse:
         """
         POST /api/medias
         Загрузка медиафайла (картинки) для твита.
         :return:
         """
-
+        current_user = get_user_by_api_key(db, api_key)
         if not file.content_type or not file.content_type.startswith("image/"):
             raise HTTPException(
                 status_code=400,

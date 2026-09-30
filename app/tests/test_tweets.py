@@ -22,8 +22,8 @@ def test_get_tweets(client: TestClient):
     assert data["result"] is True
     tweets = data["tweets"]
     contents = [t["content"] for t in tweets]
-    assert "Bob here." in contents
-    assert "Carol tweeting." in contents
+    assert "Here Bob" in contents
+    assert "Hello world" in contents
 
 
 def test_delete_own_tweet(client: TestClient):
