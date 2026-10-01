@@ -35,6 +35,7 @@ class TweetInfo(BaseModel):
     likes: List[LikeInfo] = []
 
 
+
 class TweetCreate(BaseModel):
     """Схема создания твита (тело запроса)."""
     tweet_data: str
@@ -44,6 +45,8 @@ class TweetCreate(BaseModel):
 class GenericResponse(BaseModel):
     """Базовый ответ с полем result."""
     result: bool
+    error_type: Optional[str] = None
+    error_message: Optional[str] = None
 
 
 class TweetCreateResponse(GenericResponse):
@@ -63,10 +66,6 @@ class TweetsListResponse(GenericResponse):
 
 class UserProfileResponse(GenericResponse):
     """Ответ на получение профиля пользователя."""
-    user: UserLists
+    user: Optional[UserLists] = None
 
-class ErrorResponse(BaseModel):
-    """Схема ошибки."""
-    result: bool = False
-    error_type: str
-    error_message: str
+

@@ -2,6 +2,7 @@ from typing import List
 
 from fastapi import FastAPI, Header, HTTPException, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.database import get_db
 from app.models import User, Tweet, Likes, Media
@@ -19,14 +20,8 @@ from app.schemas import (
 def get_user_by_api(db: Session, api_key: str) -> User:
     user = db.query(User).filter(User.name == api_key).first()
     if user is None:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "result": False,
-                "error_type": "unauthorized",
-                "error_message": "Invalid api-key",
-            },
-        )
+        return None
+
     return user
 
 # def get_default_user(db: Session = Depends(get_db)) -> User:
@@ -74,19 +69,13 @@ def register_endpoints(app: FastAPI) -> None:
         current_user = get_user_by_api(db, api_key)
 
         following_id = [u.id for u in current_user.following]
-        tweets = db.query(Tweet).filter(Tweet.author_id.in_(following_id)).all()
-        if tweets is None:
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "result": False,
-                    "error_type": "not_found",
-                    "error_message": "Tweet not found",
-                },
-            )
+        following_id.append(current_user.id)
+        tweets = db.query(Tweet).filter(Tweet.author_id.in_(following_id)).outerjoin(Likes,
+            Tweet.id==Likes.tweet_id).group_by(Tweet.id).order_by(func.count(Likes.id).desc()).all()
         def tweet_to_info(t: Tweet)-> TweetInfo:
             return TweetInfo(id=t.id, content=t.content, author=TweetAuth(id=t.author.id, name=t.author.name),
-                             likes=[LikeInfo(user_id=l.user.id, name=l.user.name) for l in t.likes])
+                             likes=[LikeInfo(user_id=l.user.id, name=l.user.name) for l in t.likes],
+                             attachments=[m.url for m in t.media] if t.media else [],)
         tweets_l = [tweet_to_info(t) for t in tweets]
         return TweetsListResponse(result=True, tweets=tweets_l)
 
@@ -101,22 +90,16 @@ def register_endpoints(app: FastAPI) -> None:
 
         tweet = db.query(Tweet).filter(Tweet.id == tweet_id).first()
         if tweet is None:
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "result": False,
-                    "error_type": "not_found",
-                    "error_message": "Tweet not found",
-                },
+            return GenericResponse(
+                result=False,
+                error_type="not_found",
+                error_message="Tweet not found",
             )
         if tweet.author_id != current_user.id:
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "result": False,
-                    "error_type": "forbidden",
-                    "error_message": "You can delete only your own tweets",
-                },
+            return GenericResponse(
+                result=False,
+                error_type="not_found",
+                error_message="Tweet not found",
             )
 
         db.delete(tweet)
@@ -134,13 +117,10 @@ def register_endpoints(app: FastAPI) -> None:
 
         tweet = db.query(Tweet).filter(Tweet.id == tweet_id).first()
         if tweet is None:
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "result": False,
-                    "error_type": "not_found",
-                    "error_message": "Tweet not found",
-                },
+            return GenericResponse(
+                result=False,
+                error_type="not_found",
+                error_message="Tweet not found",
             )
 
         exist = (
@@ -167,13 +147,10 @@ def register_endpoints(app: FastAPI) -> None:
 
         tweet = db.query(Tweet).filter(Tweet.id == tweet_id).first()
         if tweet is None:
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "result": False,
-                    "error_type": "not_found",
-                    "error_message": "Tweet not found",
-                },
+            return GenericResponse(
+                result=False,
+                error_type="not_found",
+                error_message="Tweet not found",
             )
 
         like = (

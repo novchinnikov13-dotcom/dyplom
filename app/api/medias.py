@@ -6,21 +6,15 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.database import SessionLocal
 from app.models import User, Media
-from app.schemas import MediaUploadResponse
+from app.schemas import MediaUploadResponse, GenericResponse
 from app.config import MEDIA_ROOT
 
 
 def get_user_by_api_key(db: Session, api_key: str) -> User:
     user = db.query(User).filter(User.name == api_key).first()
     if user is None:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "result": False,
-                "error_type": "unauthorized",
-                "error_message": "Invalid api-key",
-            },
-        )
+
+        return None
     return user
 
 
@@ -43,14 +37,10 @@ def reg_endpoints(app: FastAPI) -> None:
         """
         current_user = get_user_by_api_key(db, api_key)
         if not file.content_type or not file.content_type.startswith("image/"):
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "result": False,
-                    "error_type": "bad_request",
-                    "error_message": "Only image files are allowed",
-                },
-            )
+            return GenericResponse(
+                result=False,
+                error_type="not_found",
+                error_message= "Only image files are allowed", )
         os.makedirs(MEDIA_ROOT, exist_ok=True)
         format = os.path.splitext(file.filename)[1].lower() if file.filename else '.jpg'
         filename = f"{uuid.uuid4().hex}{format}"
