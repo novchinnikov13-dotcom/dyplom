@@ -19,11 +19,10 @@ def create_test_users_and_tweets():
         db.add_all([user_test, user_alice, user_bob, user_carol])
         db.flush()
 
-        # Подписки: test подписан на alice, bob, carol
         user_test.following.extend([user_alice, user_bob, user_carol])
         db.commit()
 
-        # Тестовые твиты
+
         tweets = [
             Tweet(author_id=user_alice.id, content="Первый твит от alice"),
             Tweet(author_id=user_alice.id, content="Второй твит от alice"),
@@ -33,14 +32,11 @@ def create_test_users_and_tweets():
         db.add_all(tweets)
         db.commit()
 
-        print("✓ БД инициализирована")
-        print("✓ Пользователи: test, alice, bob, carol")
-        print("✓ test подписан на alice, bob, carol")
-        print("✓ API ключ по умолчанию: test")
+
 
     except Exception as e:
         db.rollback()
-        print(f"✗ Ошибка инициализации: {e}")
+        print(f"Ошибка инициализации: {e}")
         raise
     finally:
         db.close()
