@@ -31,7 +31,7 @@ def db_session():
     bob = User(name="bob")
     carol = User(name="carol")
 
-    # Алиса подписывается на Боба и Кэрол
+
     alice.following.append(bob)
     alice.following.append(carol)
 

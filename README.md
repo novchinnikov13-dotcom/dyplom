@@ -10,112 +10,174 @@ git clone <repo-url>
 cd microblog
 ```
 
-### 2. Запуск через Docker Compose
+##  Запуск через Docker Compose
+
+
+### Шаг 2: Запуск контейнеров
+
+В терминале перейдите в папку проекта и выполните:
 
 ```bash
+# Запускаем контейнеры (сборка + старт)
 docker compose up --build
 ```
 
-Приложение доступно на http://localhost:8000
 
-## API ключи
+### Шаг 3: Проверка работы
 
-При инициализации создаются пользователи:
+Откройте браузер и перейдите на:
 
-| Пользователь | API ключ |
-|--------------|----------|
-| test         | test     |
-| alice        | alice    |
-| bob          | bob      |
-| carol        | carol    |
+- **Главная страница**: http://127.0.0.1:8000
+- **Swagger UI (документация API)**: http://127.0.0.1:8000/docs
 
-**Пользователь `test` подписан на alice, bob, carol** — лента не будет пустой.
-
-## Примеры запросов
-
-### Получить ленту твитов
+Или проверьте через терминал:
 
 ```bash
-curl -H "api-key: test" http://localhost:8000/api/tweets
+# Проверяем, что сервер отвечает
+curl -H "api-key: test" http://127.0.0.1:8000/api/users/me
 ```
+
+**Ожидаемый ответ:**
+```json
+{
+  "result": true,
+  "user": {
+    "id": 1,
+    "name": "test",
+    "followers": [],
+    "following": [
+      {"id": 2, "name": "alice"},
+      {"id": 3, "name": "bob"},
+      {"id": 4, "name": "carol"}
+    ]
+  }
+}
+```
+
+---
+
+## 🔑 API ключи
+
+При инициализации создаются 4 пользователя:
+
+| Пользователь | API ключ | Описание |
+|--------------|----------|----------|
+| test         | test     | Основной пользователь (подписан на всех) |
+| alice        | alice    | Тестовый пользователь 1 |
+| bob          | bob      | Тестовый пользователь 2 |
+| carol        | carol    | Тестовый пользователь 3 |
+
+**Подписки:**
+- `test` подписан на `alice`, `bob`, `carol`
+- Лента `test` будет содержать твиты от всех троих
+
+---
+
+## 📡 Примеры запросов
 
 ### Получить профиль текущего пользователя
 
 ```bash
-curl -H "api-key: test" http://localhost:8000/api/users/me
+curl -H "api-key: test" http://127.0.0.1:8000/api/users/me
+```
+
+### Получить ленту твитов
+
+```bash
+curl -H "api-key: test" http://127.0.0.1:8000/api/tweets
+```
+
+**Ответ с картинками:**
+```json
+{
+  "result": true,
+  "tweets": [
+    {
+      "id": 1,
+      "content": "Твит с картинкой",
+      "attachments": ["/media/abc123.jpg"],
+      "author": {"id": 2, "name": "alice"},
+      "likes": []
+    }
+  ]
+}
 ```
 
 ### Подписаться на пользователя
 
 ```bash
-curl -X POST \
-  -H "api-key: test" \
-  http://localhost:8000/api/users/2/follow
+# Подписаться на bob (ID=3)
+curl -X POST -H "api-key: alice" http://127.0.0.1:8000/api/users/3/follow
 ```
 
-
-
-### Загрузить медиа
+### Создать твит
 
 ```bash
 curl -X POST \
   -H "api-key: test" \
-  -F "file=@image.jpg" \
-  http://localhost:8000/api/medias/upload
+  -H "Content-Type: application/json" \
+  -d '{"tweet_data": "Мой первый твит!"}' \
+  http://127.0.0.1:8000/api/tweets
 ```
 
-## Тесты
+---
+
+##  Загрузка медиа
+
+### POST /api/medias/upload
+
+Загружает картинку и возвращает её ID.
+
+**Пример:**
 
 ```bash
-docker compose exec app pytest -v
+curl -X POST \
+  -H "api-key: test" \
+  -F "file=@photo.jpg" \
+  http://127.0.0.1:8000/api/medias/upload
+```
+
+**Ответ:**
+```json
+{
+  "result": true,
+  "media_id": 1
+}
 ```
 
 
+---
 
+##  Доступ к файлам
 
-## Структура проекта
-microblog/
-├── app/
-│ ├── api/
-│ │ ├── tweets.py
-│ │ ├── users.py
-│ │ └── medias.py
-│ ├── database.py
-│ ├── models.py
-│ ├── schemas.py
-│ └── main.py
-├── create.py
-├── docker-compose.yml
-├── Dockerfile
-├── requirements.txt
-└── README.md
+### GET /media/{filename}
+
+Отдаёт загруженный файл по имени.
+
+**Пример:**
+
+```bash
+# Файл доступен по URL /media/{filename}
+curl http://127.0.0.1:8000/media/abc123.jpg
+```
+
+**В браузере:**
+http://127.0.0.1:8000/media/abc123.jpg
 
 text
 
-## Ответы API
-
-### Успешный ответ
-
+**В ленте твитов:**
 ```json
 {
-  "result": true
+  "attachments": ["/media/abc123.jpg"]
 }
 ```
 
-### Ответ с ошибкой
-
-```json
-{
-  "result": false,
-  "error_type": "not_found",
-  "error_message": "User not found"
-}
+**Использование в HTML:**
+```html
+<img src="http://127.0.0.1:8000/media/abc123.jpg" alt="Картинка" />
 ```
 
-### Возможные error_type
+---
 
-- `unauthorized` — неверный API ключ
-- `not_found` — пользователь или твит не найден
-- `forbidden` — нет прав на операцию
-- `bad_request` — некорректный запрос
 

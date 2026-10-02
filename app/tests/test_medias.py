@@ -7,7 +7,7 @@ def test_upload_media(client: TestClient):
     image_data.name = "test.png"
 
     response = client.post(
-        "/api/medias",
+        "/api/medias/upload",
         files={"file": ("test.png", image_data, "image/png")},
         headers={"api-key": "alice"},
     )

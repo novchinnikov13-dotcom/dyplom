@@ -1,12 +1,15 @@
 from sqlalchemy.orm import Session
-from app.database import SessionLocal
+from app.database import SessionLocal, Base, engine
 from app.models import User, Tweet
 
 
 def create_test_users_and_tweets():
+    print("Создание таблиц...")
+    Base.metadata.create_all(bind=engine)
+    print("Таблицы созданы")
+
     db: Session = SessionLocal()
     try:
-        # Проверка, есть ли уже пользователи
         if db.query(User).first():
             print("БД уже инициализирована.")
             return
@@ -22,7 +25,6 @@ def create_test_users_and_tweets():
         user_test.following.extend([user_alice, user_bob, user_carol])
         db.commit()
 
-
         tweets = [
             Tweet(author_id=user_alice.id, content="Первый твит от alice"),
             Tweet(author_id=user_alice.id, content="Второй твит от alice"),
@@ -31,8 +33,6 @@ def create_test_users_and_tweets():
         ]
         db.add_all(tweets)
         db.commit()
-
-
 
     except Exception as e:
         db.rollback()

@@ -57,7 +57,8 @@ class TweetCreateResponse(GenericResponse):
 class MediaUploadResponse(GenericResponse):
     """Ответ на загрузку медиа."""
     media_id: int
-
+    error_type: Optional[str] = None
+    error_message: Optional[str] = None
 
 class TweetsListResponse(GenericResponse):
     """Ответ на получение ленты твитов."""

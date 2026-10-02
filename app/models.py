@@ -65,6 +65,11 @@ class Media(Base):
 
     owner = relationship('User', back_populates='media')
 
+    @property
+    def url(self) -> str:
+        """Возвращает URL для доступа к файлу через /media/{filename}"""
+        return f"/media/{self.filename}"
+
 
 class Likes(Base):
     """

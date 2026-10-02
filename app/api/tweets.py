@@ -67,7 +67,13 @@ def register_endpoints(app: FastAPI) -> None:
             db: Session = Depends(get_db),
     ) -> TweetsListResponse:
         current_user = get_user_by_api(db, api_key)
-
+        if current_user is None:
+            return TweetsListResponse(
+                result=False,
+                error_type="unauthorized",
+                error_message="Invalid api-key",
+                tweets=[],
+            )
         following_id = [u.id for u in current_user.following]
         following_id.append(current_user.id)
         tweets = db.query(Tweet).filter(Tweet.author_id.in_(following_id)).outerjoin(Likes,

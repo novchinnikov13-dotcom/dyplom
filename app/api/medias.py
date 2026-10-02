@@ -1,9 +1,10 @@
 import os
 import uuid
-
+from pathlib import Path
 from fastapi import FastAPI, Header, UploadFile, File, HTTPException, Depends, Request
 from sqlalchemy.orm import Session
 from app.database import get_db
+from fastapi.staticfiles import StaticFiles
 from app.database import SessionLocal
 from app.models import User, Media
 from app.schemas import MediaUploadResponse, GenericResponse
@@ -25,7 +26,9 @@ def get_user_by_api_key(db: Session, api_key: str) -> User:
 #     return user
 
 def reg_endpoints(app: FastAPI) -> None:
-    @app.post("/api/medias", response_model=MediaUploadResponse)
+    Path(MEDIA_ROOT).mkdir(parents=True, exist_ok=True)
+    app.mount("/media", StaticFiles(directory=MEDIA_ROOT), name="media")
+    @app.post("/api/medias/upload", response_model=MediaUploadResponse)
     def upload_media(file: UploadFile = File(...),
         api_key: str = Header(..., alias="api-key"),
         db: Session = Depends(get_db),
@@ -37,7 +40,7 @@ def reg_endpoints(app: FastAPI) -> None:
         """
         current_user = get_user_by_api_key(db, api_key)
         if not file.content_type or not file.content_type.startswith("image/"):
-            return GenericResponse(
+            return MediaUploadResponse(
                 result=False,
                 error_type="not_found",
                 error_message= "Only image files are allowed", )
@@ -63,3 +66,39 @@ def reg_endpoints(app: FastAPI) -> None:
         finally:
             db.close()
 
+    @app.delete("/api/medias/{media_id}", response_model=GenericResponse)
+    def delete_media(
+            media_id: int,
+            api_key: str = Header(..., alias="api-key"),
+            db: Session = Depends(get_db),
+    ) -> GenericResponse:
+        current_user = get_user_by_api_key(db, api_key)
+        if current_user is None:
+            return GenericResponse(
+                result=False,
+                error_type="unauthorized",
+                error_message="Invalid api-key",
+            )
+
+        media = db.query(Media).filter(Media.id == media_id).first()
+        if media is None:
+            return GenericResponse(
+                result=False,
+                error_type="not_found",
+                error_message="Media not found",
+            )
+
+        if media.owner_id != current_user.id:
+            return GenericResponse(
+                result=False,
+                error_type="forbidden",
+                error_message="You can delete only your own media",
+            )
+
+        if Path(media.path).exists():
+            os.remove(media.path)
+
+        db.delete(media)
+        db.commit()
+
+        return GenericResponse(result=True)

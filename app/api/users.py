@@ -135,7 +135,7 @@ def reg_endpoints(app: FastAPI) -> None:
         user = db.query(User).filter(User.id == user_id).first()
         if user is None:
             return UserProfileResponse(
-                result=True,
+                result=False,
                 error_type="not_found",
                 error_message="User not found",
             )
