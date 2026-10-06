@@ -1,78 +1,159 @@
-import os
 import uuid
 from pathlib import Path
-from fastapi import FastAPI, Header, UploadFile, File, HTTPException, Depends, Request
-from sqlalchemy.orm import Session
-from app.database import get_db
+
+from fastapi import (
+    FastAPI,
+    Header,
+    UploadFile,
+    File,
+    HTTPException,
+    Depends,
+)
 from fastapi.staticfiles import StaticFiles
-from app.database import SessionLocal
+from sqlalchemy.orm import Session
+
+from app.database import get_db
 from app.models import User, Media
 from app.schemas import MediaUploadResponse, GenericResponse
 from app.config import MEDIA_ROOT
 
 
-def get_user_by_api_key(db: Session, api_key: str) -> User:
-    user = db.query(User).filter(User.name == api_key).first()
-    if user is None:
-
+def get_user_by_api_key(
+    db: Session,
+    api_key: str | None,
+) -> User | None:
+    if not api_key:
         return None
-    return user
 
+    return (
+        db.query(User)
+        .filter(User.name == api_key)
+        .first()
+    )
 
-# def get_default_user(db: Session = Depends(get_db)) -> User:
-#     user = db.query(User).first()
-#     if user is None:
-#         raise HTTPException(500, detail="No users in DB")
-#     return user
 
 def reg_endpoints(app: FastAPI) -> None:
-    Path(MEDIA_ROOT).mkdir(parents=True, exist_ok=True)
-    app.mount("/media", StaticFiles(directory=MEDIA_ROOT), name="media")
-    @app.post("/api/medias/upload", response_model=MediaUploadResponse)
-    def upload_media(file: UploadFile = File(...),
-        api_key: str = Header(..., alias="api-key"),
+    media_root = Path(MEDIA_ROOT)
+    media_root.mkdir(parents=True, exist_ok=True)
+
+    app.mount(
+        "/media",
+        StaticFiles(directory=media_root),
+        name="media",
+    )
+
+    @app.post(
+        "/api/medias",
+        response_model=MediaUploadResponse,
+    )
+    def upload_media(
+        file: UploadFile = File(...),
+        api_key: str | None = Header(
+            default=None,
+            alias="api-key",
+        ),
         db: Session = Depends(get_db),
     ) -> MediaUploadResponse:
-        """
-        POST /api/medias
-        Загрузка медиафайла (картинки) для твита.
-        :return:
-        """
         current_user = get_user_by_api_key(db, api_key)
-        if not file.content_type or not file.content_type.startswith("image/"):
+
+
+
+        if current_user is None:
             return MediaUploadResponse(
                 result=False,
-                error_type="not_found",
-                error_message= "Only image files are allowed", )
-        os.makedirs(MEDIA_ROOT, exist_ok=True)
-        format = os.path.splitext(file.filename)[1].lower() if file.filename else '.jpg'
-        filename = f"{uuid.uuid4().hex}{format}"
-        path = os.path.join(MEDIA_ROOT, filename)
+                error_type="unauthorized",
+                error_message="Invalid api-key",
+            )
 
-        with open(path, 'wb') as media:
-            media.write(file.file.read())
+        if not file.filename:
+            return MediaUploadResponse(
+                result=False,
+                error_type="bad_request",
+                error_message="Filename is required",
+            )
 
+        if (
+            not file.content_type
+            or not file.content_type.startswith("image/")
+        ):
+            return MediaUploadResponse(
+                result=False,
+                error_type="bad_request",
+                error_message="Only image files are allowed",
+            )
+
+        extension = Path(file.filename).suffix.lower()
+
+        if not extension:
+            extension = ".jpg"
+
+        filename = f"{uuid.uuid4().hex}{extension}"
+        file_path = media_root / filename
 
         try:
-            media = Media(owner_id = current_user.id, filename = file.filename,
-                          path = f"/media/{filename}",)
+            with file_path.open("wb") as output_file:
+                while chunk := file.file.read(1024 * 1024):
+                    output_file.write(chunk)
+
+            media = Media(
+                owner_id=current_user.id,
+                filename=file.filename,
+                path=f"/media/{filename}",
+            )
+
             db.add(media)
             db.commit()
             db.refresh(media)
-            return MediaUploadResponse(result=True, media_id=media.id)
+
+            return MediaUploadResponse(
+                result=True,
+                media_id=media.id,
+            )
+
         except Exception:
             db.rollback()
-            raise
-        finally:
-            db.close()
 
-    @app.delete("/api/medias/{media_id}", response_model=GenericResponse)
+            if file_path.exists():
+                file_path.unlink()
+
+            raise
+
+        finally:
+            file.file.close()
+
+    @app.post(
+        "/api/medias/upload",
+        response_model=MediaUploadResponse,
+        include_in_schema=False,
+    )
+    def upload_media_legacy(
+        file: UploadFile = File(...),
+        api_key: str | None = Header(
+            default=None,
+            alias="api-key",
+        ),
+        db: Session = Depends(get_db),
+    ) -> MediaUploadResponse:
+        return upload_media(
+            file=file,
+            api_key=api_key,
+            db=db,
+        )
+
+    @app.delete(
+        "/api/medias/{media_id}",
+        response_model=GenericResponse,
+    )
     def delete_media(
-            media_id: int,
-            api_key: str = Header(..., alias="api-key"),
-            db: Session = Depends(get_db),
+        media_id: int,
+        api_key: str | None = Header(
+            default=None,
+            alias="api-key",
+        ),
+        db: Session = Depends(get_db),
     ) -> GenericResponse:
         current_user = get_user_by_api_key(db, api_key)
+
         if current_user is None:
             return GenericResponse(
                 result=False,
@@ -80,7 +161,12 @@ def reg_endpoints(app: FastAPI) -> None:
                 error_message="Invalid api-key",
             )
 
-        media = db.query(Media).filter(Media.id == media_id).first()
+        media = (
+            db.query(Media)
+            .filter(Media.id == media_id)
+            .first()
+        )
+
         if media is None:
             return GenericResponse(
                 result=False,
@@ -95,8 +181,11 @@ def reg_endpoints(app: FastAPI) -> None:
                 error_message="You can delete only your own media",
             )
 
-        if Path(media.path).exists():
-            os.remove(media.path)
+        filename = Path(media.path).name
+        file_path = media_root / filename
+
+        if file_path.exists():
+            file_path.unlink()
 
         db.delete(media)
         db.commit()
