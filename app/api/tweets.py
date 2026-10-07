@@ -81,7 +81,7 @@ def register_endpoints(app: FastAPI) -> None:
         def tweet_to_info(t: Tweet)-> TweetInfo:
             return TweetInfo(id=t.id, content=t.content, author=TweetAuth(id=t.author.id, name=t.author.name),
                              likes=[LikeInfo(user_id=l.user.id, name=l.user.name) for l in t.likes],
-                             attachments=[m.url for m in t.media] if t.media else [],)
+                             attachments=[media.path for media in t.media if media.path],)
         tweets_l = [tweet_to_info(t) for t in tweets]
         return TweetsListResponse(result=True, tweets=tweets_l)
 
