@@ -1,12 +1,13 @@
-
-from app.api.tweets import register_endpoints as register_tweets
-from app.api.medias import reg_endpoints as register_medias
-from app.api.users import reg_endpoints as register_users
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-from pathlib import Path
 import logging
+from pathlib import Path
+
+from fastapi import FastAPI
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+
+from app.api.medias import reg_endpoints as register_medias
+from app.api.tweets import register_endpoints as register_tweets
+from app.api.users import reg_endpoints as register_users
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +39,7 @@ def create_app() -> FastAPI:
             if path.startswith("/api/"):
                 headers = list(scope.get("headers", []))
 
-                has_api_key = any(
-                    key.lower() == b"api-key"
-                    for key, value in headers
-                )
+                has_api_key = any(key.lower() == b"api-key" for key, value in headers)
 
                 if not has_api_key:
                     headers.append(

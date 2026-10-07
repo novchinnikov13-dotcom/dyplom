@@ -1,5 +1,7 @@
-from fastapi.testclient import TestClient
 import io
+
+from fastapi.testclient import TestClient
+
 
 def test_upload_media(client: TestClient):
     # Создаём тестовую картинку в памяти

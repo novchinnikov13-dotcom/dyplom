@@ -1,5 +1,5 @@
-from typing import List, Optional
 from pydantic import BaseModel
+
 
 class UserBase(BaseModel):
     id: int
@@ -7,14 +7,13 @@ class UserBase(BaseModel):
 
 
 class UserLists(UserBase):
-    followers: List[UserBase]
-    following: List[UserBase]
+    followers: list[UserBase]
+    following: list[UserBase]
 
 
 class UsersListResponse(BaseModel):
     result: bool
-    users: List[UserBase]
-
+    users: list[UserBase]
 
 
 class TweetAuth(BaseModel):
@@ -30,43 +29,51 @@ class LikeInfo(BaseModel):
 class TweetInfo(BaseModel):
     id: int
     content: str
-    attachments: List[str] = []
+    attachments: list[str] = []
     author: TweetAuth
-    likes: List[LikeInfo] = []
-
+    likes: list[LikeInfo] = []
 
 
 class TweetCreate(BaseModel):
     """Схема создания твита (тело запроса)."""
+
     tweet_data: str
-    tweet_media_ids: Optional[List[int]] = None
+    tweet_media_ids: list[int] | None = None
 
 
 class GenericResponse(BaseModel):
     """Базовый ответ с полем result."""
     result: bool
-    error_type: Optional[str] = None
-    error_message: Optional[str] = None
+    error_type: str | None = None
+    error_message: str | None = None
 
 
-class TweetCreateResponse(GenericResponse):
+class TweetCreateResponse(BaseModel):
     """Ответ на создание твита."""
-    tweet_id: int
+    result: bool
+    error_type: str | None = None
+    error_message: str | None = None
+    tweet_id: int | None = None
 
 
 class MediaUploadResponse(GenericResponse):
     """Ответ на загрузку медиа."""
+
     media_id: int
-    error_type: Optional[str] = None
-    error_message: Optional[str] = None
+    error_type: str | None = None
+    error_message: str | None = None
+
 
 class TweetsListResponse(GenericResponse):
     """Ответ на получение ленты твитов."""
-    tweets: List[TweetInfo]
+
+    tweets: list[TweetInfo]
 
 
-class UserProfileResponse(GenericResponse):
+class UserProfileResponse(BaseModel):
     """Ответ на получение профиля пользователя."""
-    user: Optional[UserLists] = None
 
-
+    result: bool
+    error_type: str | None = None
+    error_message: str | None = None
+    user: UserLists | None = None

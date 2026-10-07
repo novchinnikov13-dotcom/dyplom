@@ -1,13 +1,13 @@
-from fastapi import FastAPI, Header, HTTPException, Depends
+from fastapi import Depends, FastAPI, Header
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import User
 from app.schemas import (
-    UserLists,
-    UserProfileResponse,
     GenericResponse,
     UserBase,
+    UserLists,
+    UserProfileResponse,
     UsersListResponse,
 )
 
@@ -19,11 +19,7 @@ def get_user_by_api_key(
     if not api_key:
         return None
 
-    return (
-        db.query(User)
-        .filter(User.name == api_key)
-        .first()
-    )
+    return db.query(User).filter(User.name == api_key).first()
 
 
 def get_current_user(
@@ -35,13 +31,8 @@ def get_current_user(
 ) -> User:
     user = get_user_by_api_key(db, api_key)
 
-    if user is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid api-key",
-        )
-
     return user
+
 
 def reg_endpoints(app: FastAPI) -> None:
 
@@ -63,10 +54,7 @@ def reg_endpoints(app: FastAPI) -> None:
     ):
         users = db.query(User).all()
 
-        users_list = [
-            UserBase(id=user.id, name=user.name)
-            for user in users
-        ]
+        users_list = [UserBase(id=user.id, name=user.name) for user in users]
 
         return UsersListResponse(
             result=True,
@@ -80,16 +68,21 @@ def reg_endpoints(app: FastAPI) -> None:
     def get_me_profile(
         current_user: User = Depends(get_current_user),
     ) -> UserProfileResponse:
+        if current_user is None:
+            return UserProfileResponse(
+                result=False,
+                error_type="unauthorized",
+                error_message="Invalid api-key",
+                user=None,
+            )
         user_details = UserLists(
             id=current_user.id,
             name=current_user.name,
             followers=[
-                UserBase(id=user.id, name=user.name)
-                for user in current_user.followers
+                UserBase(id=user.id, name=user.name) for user in current_user.followers
             ],
             following=[
-                UserBase(id=user.id, name=user.name)
-                for user in current_user.following
+                UserBase(id=user.id, name=user.name) for user in current_user.following
             ],
         )
 
@@ -107,11 +100,14 @@ def reg_endpoints(app: FastAPI) -> None:
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db),
     ) -> UserProfileResponse:
-        user = (
-            db.query(User)
-            .filter(User.id == user_id)
-            .first()
-        )
+        if current_user is None:
+            return UserProfileResponse(
+                result=False,
+                error_type="unauthorized",
+                error_message="Invalid api-key",
+                user=None,
+            )
+        user = db.query(User).filter(User.id == user_id).first()
 
         if user is None:
             return UserProfileResponse(
@@ -123,14 +119,8 @@ def reg_endpoints(app: FastAPI) -> None:
         user_details = UserLists(
             id=user.id,
             name=user.name,
-            followers=[
-                UserBase(id=item.id, name=item.name)
-                for item in user.followers
-            ],
-            following=[
-                UserBase(id=item.id, name=item.name)
-                for item in user.following
-            ],
+            followers=[UserBase(id=item.id, name=item.name) for item in user.followers],
+            following=[UserBase(id=item.id, name=item.name) for item in user.following],
         )
 
         return UserProfileResponse(
@@ -143,9 +133,9 @@ def reg_endpoints(app: FastAPI) -> None:
         response_model=GenericResponse,
     )
     def follow_user(
-            user_id: int,
-            current_user: User = Depends(get_current_user),
-            db: Session = Depends(get_db),
+        user_id: int,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
     ) -> GenericResponse:
         if user_id == current_user.id:
             return GenericResponse(
@@ -154,11 +144,7 @@ def reg_endpoints(app: FastAPI) -> None:
                 error_message="Cannot follow yourself",
             )
 
-        user = (
-            db.query(User)
-            .filter(User.id == user_id)
-            .first()
-        )
+        user = db.query(User).filter(User.id == user_id).first()
 
         if user is None:
             return GenericResponse(
@@ -178,15 +164,17 @@ def reg_endpoints(app: FastAPI) -> None:
         response_model=GenericResponse,
     )
     def unfollow_user(
-            user_id: int,
-            current_user: User = Depends(get_current_user),
-            db: Session = Depends(get_db),
+        user_id: int,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
     ) -> GenericResponse:
-        user = (
-            db.query(User)
-            .filter(User.id == user_id)
-            .first()
-        )
+        if current_user is None:
+            return GenericResponse(
+                result=False,
+                error_type="unauthorized",
+                error_message="Invalid api-key",
+            )
+        user = db.query(User).filter(User.id == user_id).first()
 
         if user is None:
             return GenericResponse(

@@ -1,13 +1,12 @@
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from fastapi.testclient import TestClient
 
 from app.database import Base, get_db
-import app.models
-from app.models import User, Tweet
 from app.main import create_app
+from app.models import Tweet, User
 
 engine = create_engine(
     "sqlite:///:memory:",
@@ -30,7 +29,6 @@ def db_session():
     alice = User(name="alice")
     bob = User(name="bob")
     carol = User(name="carol")
-
 
     alice.following.append(bob)
     alice.following.append(carol)
@@ -67,4 +65,3 @@ def client(db_session):
         yield test_client
 
     _app.dependency_overrides.clear()
-

@@ -10,7 +10,7 @@ def test_get_me_profile(client: TestClient):
     print("BODY:", response.text)
     assert response.status_code == 200
     data = response.json()
-    print(data['user']['following'][1])
+    print(data["user"]["following"][1])
     assert data["result"] is True
     assert data["user"]["name"] == "alice"
 
@@ -29,9 +29,13 @@ def test_follow_user(client: TestClient):
 def test_unfollow(client: TestClient):
     follow_resp = client.post(
         "/api/users/2/follow",
-        headers={"api-key": "alice"},)
-    unfollow_resp = client.delete("/api/users/2/follow",
-        headers={"api-key": "alice"},)
+        headers={"api-key": "alice"},
+    )
+    unfollow_resp = client.delete(
+        "/api/users/2/follow",
+        headers={"api-key": "alice"},
+    )
+    assert follow_resp.status_code == 200
     assert unfollow_resp.status_code == 200
     data = unfollow_resp.json()
     print(data)
@@ -43,4 +47,3 @@ def test_get_prof(client: TestClient):
     assert response.status_code == 200
     data = response.json()
     assert data["result"] is True
-

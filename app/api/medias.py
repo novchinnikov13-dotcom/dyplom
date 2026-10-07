@@ -2,20 +2,19 @@ import uuid
 from pathlib import Path
 
 from fastapi import (
+    Depends,
     FastAPI,
+    File,
     Header,
     UploadFile,
-    File,
-    HTTPException,
-    Depends,
 )
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import User, Media
-from app.schemas import MediaUploadResponse, GenericResponse
 from app.config import MEDIA_ROOT
+from app.database import get_db
+from app.models import Media, User
+from app.schemas import GenericResponse, MediaUploadResponse
 
 
 def get_user_by_api_key(
@@ -25,11 +24,7 @@ def get_user_by_api_key(
     if not api_key:
         return None
 
-    return (
-        db.query(User)
-        .filter(User.name == api_key)
-        .first()
-    )
+    return db.query(User).filter(User.name == api_key).first()
 
 
 def reg_endpoints(app: FastAPI) -> None:
@@ -56,8 +51,6 @@ def reg_endpoints(app: FastAPI) -> None:
     ) -> MediaUploadResponse:
         current_user = get_user_by_api_key(db, api_key)
 
-
-
         if current_user is None:
             return MediaUploadResponse(
                 result=False,
@@ -72,10 +65,7 @@ def reg_endpoints(app: FastAPI) -> None:
                 error_message="Filename is required",
             )
 
-        if (
-            not file.content_type
-            or not file.content_type.startswith("image/")
-        ):
+        if not file.content_type or not file.content_type.startswith("image/"):
             return MediaUploadResponse(
                 result=False,
                 error_type="bad_request",
@@ -161,11 +151,7 @@ def reg_endpoints(app: FastAPI) -> None:
                 error_message="Invalid api-key",
             )
 
-        media = (
-            db.query(Media)
-            .filter(Media.id == media_id)
-            .first()
-        )
+        media = db.query(Media).filter(Media.id == media_id).first()
 
         if media is None:
             return GenericResponse(
